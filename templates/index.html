@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ translations.title }}</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css">
+    <link rel="stylesheet" href="../static/css/styles.css">
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <h1>{{ translations.welcome_message }}</h1>
+            <p class="lead">{{ translations.description }}</p>
+        </div>
+    </section>
+
+    <!-- Content Section -->
+    <div class="container content">
+        <div class="row">
+            <div class="col-md-5">
+                <div class="card info-card">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ translations.user_info }}</h5>
+                        <div id="user-info">
+                            <!-- User Info will be injected here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="card info-card mt-4">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ translations.system_info }}</h5>
+                        <div id="system-info">
+                            <!-- System Info will be injected here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-7">
+                <div class="chart-container">
+                    <canvas id="diskUsageChart"></canvas>
+                </div>
+                <div class="card file-manager-card mt-4">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ translations.file_explorer }}</h5>
+                        <input type="text" id="search-input" placeholder="{{ translations.search_placeholder }}" class="form-control mb-2">
+                        <div id="file-tree"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <a href="?lang=en"><img src="https://flagcdn.com/w40/gb.png" alt="English"></a>
+        <a href="?lang=fr"><img src="https://flagcdn.com/w40/fr.png" alt="Français"></a>
+    </footer>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/jstree.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            // Fetch system info
+            $.get('/system_info', function (data) {
+                let userInfoHtml = `
+                    <p><strong>{{ translations.host_name }}:</strong> ${data.host_name}</p>
+                    <p><strong>{{ translations.user_name }}:</strong> ${data.user_name}</p>
+                    <p><strong>{{ translations.host_ip }}:</strong> ${data.host_ip}</p>
+                    <p><strong>{{ translations.home_directory }}:</strong> ${data.home_dir}</p>
+                    <p><strong>{{ translations.temp_directory }}:</strong> ${data.temp_dir}</p>
+
+                `;
+
+                let systemInfoHtml = `
+                    <p><strong>{{ translations.platform_name }}:</strong> ${data.platform_name}</p>
+                    <p><strong>{{ translations.platform_architecture }}:</strong> ${data.platform_architecture}</p>
+                    <p><strong>{{ translations.platform_version }}:</strong> ${data.platform_version}</p>
+                    <p><strong>{{ translations.processor }}:</strong> ${data.processor}</p>
+                    <p><strong>{{ translations.ram }}:</strong> ${(data.memory_total / (1024 ** 3)).toFixed(2)} {{ translations.stockage_unit}}</p>
+                `;
+                $('#system-info').html(systemInfoHtml);
+
+                $('#user-info').html(userInfoHtml);
+                    $('#search-input').keyup(function() {
+                        var searchString = $(this).val();
+                        $('#file-tree').jstree('search', searchString);
+                    });
+            });
+
+            // Fetch disk usage
+            $.get('/disk_usage', function (data) {
+                let labels = [];
+                let totalData = [];
+                let usedData = [];
+                let freeData = [];
+                data.forEach(function (disk) {
+                    labels.push(disk.mountpoint);
+                    totalData.push((disk.total / (1024 ** 3)).toFixed(2));
+                    usedData.push((disk.used / (1024 ** 3)).toFixed(2));
+                    freeData.push((disk.free / (1024 ** 3)).toFixed(2));
+                });
+
+                var ctx = document.getElementById('diskUsageChart').getContext('2d');
+                var diskUsageChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '{{ translations.total }} {{ translations.stockage_unit}}',
+                            data: totalData,
+                            backgroundColor: '#007bff',
+                        }, {
+                            label: '{{ translations.used }} {{ translations.stockage_unit}}',
+                            data: usedData,
+                            backgroundColor: '#dc3545',
+                        }, {
+                            label: '{{ translations.free }} {{ translations.stockage_unit}}',
+                            data: freeData,
+                            backgroundColor: '#28a745',
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: {
+                                stacked: true,
+                            },
+                            y: {
+                                stacked: true,
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: '{{ translations.stockage_unit}}'
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+
+            // Initialize jsTree with dynamic data
+            $.get('/list_drives', function(drives) {
+                $('#file-tree').jstree({
+                    'core': {
+                        'data': function (node, cb) {
+                            if (node.id === "#") {
+                                cb(drives);
+                            } else {
+                                $.get('/list_directory', { path: node.id })
+                                    .done(function (data) {
+                                        cb(data);
+                                    })
+                                    .fail(function () {
+                                        cb([]);
+                                    });
+                            }
+                        },
+                        'themes': {
+                            'stripes': true
+                        }
+                    },
+                    'plugins': ['search','state', 'dnd', 'sort', 'types'],
+                    'search': {
+                        'show_only_matches': true,
+                        'show_only_matches_children': true
+                    },
+                    'types': {
+                        'default': {
+                            'icon': 'fas fa-folder'
+                        },
+                        'file': {
+                            'icon': 'fas fa-file'
+                        }
+                    }
+                }).on('dblclick.jstree', function (e) {
+                    var instance = $.jstree.reference(e.target);
+                    var node = instance.get_node(e.target);
+                    if (node.type === 'default') {
+                        instance.toggle_node(node);
+                    } else if (node.type === 'file') {
+                        alert('File: ' + node.text);
+                    }
+                });
+            });
+            // Gestionnaire d'événement pour la recherche
+            $('#search-input').keyup(function() {
+                    var searchString = $(this).val();
+                    $('#file-tree').jstree('search', searchString);
+                });
+        });
+
+        
+    </script>
+</body>
+</html>

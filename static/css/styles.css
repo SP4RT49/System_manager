@@ -1,0 +1,45 @@
+body {
+    background-color: #121212;
+    color: white;
+}
+.hero {
+    background: linear-gradient(to right, #2c445e, #121212);
+    color: white;
+    padding: 60px 0;
+    text-align: center;
+}
+.hero .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.content {
+    padding: 40px 0;
+}
+.info-card, .file-manager-card {
+    background: #1c1c1e;
+    border: none;
+    margin-bottom: 20px;
+}
+.info-card .card-body, .file-manager-card .card-body {
+    color: white;
+}
+.chart-container {
+    background: #1c1c1e;
+    border-radius: 10px;
+    padding: 20px;
+}
+.file-manager-card {
+    height: 500px;
+    overflow: auto;
+}
+footer {
+    padding: 10px 0;
+    text-align: center;
+    background-color: #1c1c1e;
+}
+footer img {
+    width: 30px;
+    cursor: pointer;
+    margin: 0 10px;
+}
