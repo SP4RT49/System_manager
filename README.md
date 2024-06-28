@@ -24,7 +24,7 @@ Ce projet est une application web de gestion de fichiers qui permet aux utilisat
 
 1. **Cloner le dépôt**
    ```bash
-   git clone [URL du dépôt]
+   git clone https://github.com/SP4RT49/System_manager
 
 2. **Installez les dépendances**
    ```bash
